@@ -5,6 +5,7 @@ import PyPDF2
 import base64
 from PIL import Image
 import io
+import pytesseract
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
@@ -312,17 +313,15 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
-# Function to encode image to base64
-def image_to_base64(image_file):
+# Function to extract text from image using OCR
+def extract_text_from_image(image_file):
     try:
         img = Image.open(image_file)
-        buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        return img_str
+        text = pytesseract.image_to_string(img)
+        return text
     except Exception as e:
-        st.error(f"Error processing image: {str(e)}")
-        return None
+        st.error(f"Error extracting text from image: {str(e)}")
+        return ""
 
 # Sidebar
 with st.sidebar:
@@ -370,7 +369,6 @@ with col_input:
     )
     
     document_text = ""
-    image_base64 = None
     
     # Handle different input types
     if input_type == "Paste Text":
@@ -395,57 +393,27 @@ with col_input:
             with st.spinner("Processing image..."):
                 img = Image.open(image_file)
                 st.image(img, use_column_width=True)
-                image_base64 = image_to_base64(image_file)
-                if image_base64:
-                    st.success("Image uploaded successfully")
-                    document_text = "[Image uploaded - AI will analyze the visual content]"
+                with st.spinner("Extracting text from image using OCR..."):
+                    document_text = extract_text_from_image(image_file)
+                    if document_text.strip():
+                        st.success("Image text extracted successfully")
+                    else:
+                        st.warning("No text found in image. Please ensure the image is clear and contains readable text.")
     
     st.markdown("")
     
     # Analyze button
     if st.button("Analyze Document", use_container_width=True):
-        if not document_text.strip() and not image_base64:
+        if not document_text.strip():
             st.error("Please provide a document or image to analyze")
         else:
             with st.spinner("Processing..."):
                 try:
-                    # Build message content
-                    if image_base64:
-                        # Message with image - use text-based approach for Groq
-                        messages = [
-                            {
-                                "role": "user",
-                                "content": f"""A medical image has been uploaded. Please analyze it as if you're reviewing a clinical document image.
-
-Extract structured clinical information from this medical image. Return ONLY valid JSON, no markdown formatting.
-
-{{
-    "patient_name": "name or 'Not specified'",
-    "age": "age or 'Not specified'",
-    "gender": "gender or 'Not specified'",
-    "chief_complaint": "main complaint from image",
-    "medications": ["med1", "med2"],
-    "past_medical_history": ["condition1", "condition2"],
-    "vital_signs": {{
-        "blood_pressure": "value",
-        "heart_rate": "value",
-        "temperature": "value"
-    }},
-    "clinical_summary": "brief summary including any medications visible and their purpose",
-    "risk_flags": ["risk1", "risk2"],
-    "recommended_next_steps": ["step1", "step2"],
-    "confidence_score": 0.85
-}}
-
-Please extract the clinical information and return only the JSON object."""
-                            }
-                        ]
-                    else:
-                        # Text message
-                        messages = [
-                            {
-                                "role": "user",
-                                "content": f"""Extract structured clinical information from this document. Return ONLY valid JSON, no markdown formatting.
+                    # Build message for Groq
+                    messages = [
+                        {
+                            "role": "user",
+                            "content": f"""Extract structured clinical information from this document. Return ONLY valid JSON, no markdown formatting.
 
 {{
     "patient_name": "name or 'Not specified'",
@@ -467,8 +435,8 @@ Please extract the clinical information and return only the JSON object."""
 
 Document:
 {document_text}"""
-                            }
-                        ]
+                        }
+                    ]
                     
                     # Call Groq API
                     response = client.chat.completions.create(
