@@ -924,4 +924,4 @@ Document:
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
-st.markdown('<div class="footer">Clinical Intelligence Assistant | Groq AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Clinical Intelligence Assistant</div>', unsafe_allow_html=True)
