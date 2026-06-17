@@ -388,25 +388,25 @@ st.markdown("""
     }
     
     .timeline-container-high {
-        background: rgba(255, 107, 107, 0.1);
-        border-left: 4px solid #ff6b6b;
-        padding: 1.5rem;
+        background: transparent;
+        border-left: none;
+        padding: 0;
         border-radius: 0.5rem;
         margin-top: 1rem;
     }
     
     .timeline-container-medium {
-        background: rgba(255, 215, 61, 0.1);
-        border-left: 4px solid #ffd93d;
-        padding: 1.5rem;
+        background: transparent;
+        border-left: none;
+        padding: 0;
         border-radius: 0.5rem;
         margin-top: 1rem;
     }
     
     .timeline-container-low {
-        background: rgba(81, 207, 102, 0.1);
-        border-left: 4px solid #51cf66;
-        padding: 1.5rem;
+        background: transparent;
+        border-left: none;
+        padding: 0;
         border-radius: 0.5rem;
         margin-top: 1rem;
     }
@@ -774,6 +774,34 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                     
+                    st.markdown("")
+                    st.markdown("## Follow-up Timeline")
+                    timeline = get_followup_timeline(risk_level, patient_data)
+                    
+                    if risk_level == "HIGH":
+                        timeline_class = "timeline-container-high"
+                    elif risk_level == "MEDIUM":
+                        timeline_class = "timeline-container-medium"
+                    else:
+                        timeline_class = "timeline-container-low"
+                    
+                    st.markdown(f'<div class="{timeline_class}">', unsafe_allow_html=True)
+                    st.markdown('<div class="timeline">', unsafe_allow_html=True)
+                    
+                    for idx, (time, action) in enumerate(timeline, 1):
+                        st.markdown(f'''
+                        <div class="timeline-item">
+                            <div class="timeline-marker">{idx}</div>
+                            <div class="timeline-content">
+                                <div class="timeline-time">{time}</div>
+                                <div class="timeline-description">{action}</div>
+                            </div>
+                        </div>
+                        ''', unsafe_allow_html=True)
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
                     with col_results:
                         pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
                         patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
@@ -846,34 +874,6 @@ Document:
                                 st.markdown('</ul>', unsafe_allow_html=True)
                             else:
                                 st.markdown('<p style="color: #9bc5e6;">No specific recommendations</p>', unsafe_allow_html=True)
-                        
-                        st.markdown("")
-                        st.markdown("## Follow-up Timeline")
-                        timeline = get_followup_timeline(risk_level, patient_data)
-                        
-                        if risk_level == "HIGH":
-                            timeline_class = "timeline-container-high"
-                        elif risk_level == "MEDIUM":
-                            timeline_class = "timeline-container-medium"
-                        else:
-                            timeline_class = "timeline-container-low"
-                        
-                        st.markdown(f'<div class="{timeline_class}">', unsafe_allow_html=True)
-                        st.markdown('<div class="timeline">', unsafe_allow_html=True)
-                        
-                        for idx, (time, action) in enumerate(timeline, 1):
-                            st.markdown(f'''
-                            <div class="timeline-item">
-                                <div class="timeline-marker">{idx}</div>
-                                <div class="timeline-content">
-                                    <div class="timeline-time">{time}</div>
-                                    <div class="timeline-description">{action}</div>
-                                </div>
-                            </div>
-                            ''', unsafe_allow_html=True)
-                        
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown("## Vital Signs")
                         vitals = patient_data.get("vital_signs", {})
