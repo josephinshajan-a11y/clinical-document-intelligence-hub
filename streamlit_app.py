@@ -341,6 +341,75 @@ st.markdown("""
         font-size: 0.875rem;
         margin-top: 3rem;
     }
+    
+    .timeline {
+        margin: 1rem 0;
+    }
+    
+    .timeline-item {
+        display: flex;
+        margin-bottom: 1.2rem;
+        position: relative;
+        padding-left: 2.5rem;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #2d5a8c;
+        border: 3px solid #5ba3d0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: bold;
+        color: #ffffff;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .timeline-time {
+        font-weight: 700;
+        color: #5ba3d0;
+        margin-bottom: 0.3rem;
+        font-size: 0.95rem;
+    }
+    
+    .timeline-description {
+        color: #ffffff;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .timeline-container-high {
+        background: rgba(255, 107, 107, 0.1);
+        border-left: 4px solid #ff6b6b;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .timeline-container-medium {
+        background: rgba(255, 215, 61, 0.1);
+        border-left: 4px solid #ffd93d;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .timeline-container-low {
+        background: rgba(81, 207, 102, 0.1);
+        border-left: 4px solid #51cf66;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -389,6 +458,36 @@ def get_risk_level(score):
         return "MEDIUM", "#ffd93d"
     else:
         return "LOW", "#51cf66"
+
+def get_followup_timeline(risk_level, patient_data):
+    """Generate follow-up timeline based on risk level"""
+    if risk_level == "HIGH":
+        return [
+            ("Day 1 (TODAY)", "Schedule specialist consultation immediately"),
+            ("Day 1", "Order urgent labs if not already done"),
+            ("Day 3", "Initial follow-up call from care team"),
+            ("Day 7", "First specialist appointment"),
+            ("Day 14", "Medication effectiveness review"),
+            ("Day 30", "Comprehensive reassessment")
+        ]
+    elif risk_level == "MEDIUM":
+        return [
+            ("Day 1-3", "Schedule specialist consultation"),
+            ("Day 7", "Initial labs review"),
+            ("Day 14", "First follow-up appointment"),
+            ("Day 30", "Medication adjustment if needed"),
+            ("Day 60", "Progress evaluation"),
+            ("Day 90", "Comprehensive reassessment")
+        ]
+    else:  # LOW
+        return [
+            ("Week 1", "Schedule routine follow-up"),
+            ("Week 2", "Initial check-in"),
+            ("Week 4", "Primary care visit"),
+            ("Week 8", "Medication effectiveness review"),
+            ("Week 12", "Progress evaluation"),
+            ("Month 6", "Routine reassessment")
+        ]
 
 def generate_pdf_report(patient_data, risk_score, risk_level):
     buffer = BytesIO()
@@ -528,6 +627,7 @@ with st.sidebar:
     - Lists current medications
     - Provides risk stratification
     - Provides confidence scoring
+    - Generates follow-up timelines
     """)
     
     st.divider()
@@ -747,6 +847,34 @@ Document:
                             else:
                                 st.markdown('<p style="color: #9bc5e6;">No specific recommendations</p>', unsafe_allow_html=True)
                         
+                        st.markdown("")
+                        st.markdown("## Follow-up Timeline")
+                        timeline = get_followup_timeline(risk_level, patient_data)
+                        
+                        if risk_level == "HIGH":
+                            timeline_class = "timeline-container-high"
+                        elif risk_level == "MEDIUM":
+                            timeline_class = "timeline-container-medium"
+                        else:
+                            timeline_class = "timeline-container-low"
+                        
+                        st.markdown(f'<div class="{timeline_class}">', unsafe_allow_html=True)
+                        st.markdown('<div class="timeline">', unsafe_allow_html=True)
+                        
+                        for idx, (time, action) in enumerate(timeline, 1):
+                            st.markdown(f'''
+                            <div class="timeline-item">
+                                <div class="timeline-marker">{idx}</div>
+                                <div class="timeline-content">
+                                    <div class="timeline-time">{time}</div>
+                                    <div class="timeline-description">{action}</div>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+                        
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
                         st.markdown("## Vital Signs")
                         vitals = patient_data.get("vital_signs", {})
                         bp = vitals.get("blood_pressure", "N/A") if vitals else "N/A"
@@ -790,4 +918,4 @@ Document:
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
-st.markdown('<div class="footer">Clinical Intelligence Assistant | Groq API</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Clinical Intelligence Assistant | Groq AI</div>', unsafe_allow_html=True)
