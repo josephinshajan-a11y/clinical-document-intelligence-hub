@@ -71,6 +71,56 @@ st.markdown("""
         color: #ffffff !important;
     }
     
+    .risk-card-high {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        border-left: 8px solid #ff0000;
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+    
+    .risk-card-medium {
+        background: linear-gradient(135deg, #ffd93d 0%, #ffb700 100%);
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        border-left: 8px solid #ff9800;
+        box-shadow: 0 4px 12px rgba(255, 215, 61, 0.4);
+    }
+    
+    .risk-card-low {
+        background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        border-left: 8px solid #2f9e44;
+        box-shadow: 0 4px 12px rgba(81, 207, 102, 0.4);
+    }
+    
+    .risk-score-number {
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #ffffff;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .risk-score-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #ffffff;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .risk-description {
+        font-size: 0.95rem;
+        color: #ffffff;
+        line-height: 1.6;
+        margin-top: 1rem;
+    }
+    
     .patient-card {
         background: #ffffff !important;
         padding: 2rem;
@@ -305,7 +355,42 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
-def generate_pdf_report(patient_data):
+def calculate_risk_score(patient_data):
+    score = 0
+    risk_factors = patient_data.get('risk_flags', [])
+    
+    critical_keywords = ['acute', 'severe', 'emergency', 'sepsis', 'stroke', 'infarction', 'hemorrhage', 'critical']
+    high_keywords = ['hypertension', 'diabetes', 'heart disease', 'elevated', 'abnormal']
+    
+    for risk in risk_factors:
+        risk_lower = risk.lower()
+        if any(keyword in risk_lower for keyword in critical_keywords):
+            score += 3
+        elif any(keyword in risk_lower for keyword in high_keywords):
+            score += 1.5
+        else:
+            score += 1
+    
+    try:
+        age = int(str(patient_data.get('age', '0')).split()[0]) if patient_data.get('age') else 0
+        if age > 70:
+            score += 1
+        elif age > 60:
+            score += 0.5
+    except:
+        pass
+    
+    return min(round(score, 1), 10)
+
+def get_risk_level(score):
+    if score >= 7:
+        return "HIGH", "#ff6b6b"
+    elif score >= 4:
+        return "MEDIUM", "#ffd93d"
+    else:
+        return "LOW", "#51cf66"
+
+def generate_pdf_report(patient_data, risk_score, risk_level):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
     elements = []
@@ -332,6 +417,10 @@ def generate_pdf_report(patient_data):
     elements.append(Paragraph("Clinical Intelligence Report", title_style))
     elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
     elements.append(Spacer(1, 0.3*inch))
+    
+    elements.append(Paragraph("Risk Stratification", heading_style))
+    elements.append(Paragraph(f"Risk Score: {risk_score}/10 ({risk_level})", styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
     
     elements.append(Paragraph("Patient Information", heading_style))
     patient_info = [
@@ -437,6 +526,7 @@ with st.sidebar:
     - Identifies risk flags
     - Summarizes clinical findings
     - Lists current medications
+    - Provides risk stratification
     - Provides confidence scoring
     """)
     
@@ -539,10 +629,13 @@ Document:
                         st.code(response_text)
                         st.stop()
                     
+                    risk_score = calculate_risk_score(patient_data)
+                    risk_level, risk_color = get_risk_level(risk_score)
+                    
                     with col_results:
                         st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
                         
-                        pdf_buffer = generate_pdf_report(patient_data)
+                        pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
                         patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
                         st.download_button(
                             label="📥 Download Report (PDF)",
@@ -551,6 +644,46 @@ Document:
                             mime="application/pdf",
                             use_container_width=True
                         )
+                        
+                        st.markdown("")
+                        
+                        st.markdown("## ⚕️ Risk Stratification")
+                        if risk_level == "HIGH":
+                            st.markdown(f"""
+                            <div class="risk-card-high">
+                                <div class="risk-score-number">{risk_score}/10</div>
+                                <div class="risk-score-label">🚨 HIGH RISK PATIENT</div>
+                                <div class="risk-description">
+                                    <strong>Requires immediate clinical review and intervention.</strong><br><br>
+                                    This patient presents with multiple risk factors that warrant urgent attention. 
+                                    Schedule specialist consultation and consider escalation protocols.
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        elif risk_level == "MEDIUM":
+                            st.markdown(f"""
+                            <div class="risk-card-medium">
+                                <div class="risk-score-number">{risk_score}/10</div>
+                                <div class="risk-score-label">⚠️ MEDIUM RISK PATIENT</div>
+                                <div class="risk-description">
+                                    <strong>Schedule specialist consultation within 1-2 weeks.</strong><br><br>
+                                    This patient has several risk factors that need careful monitoring. 
+                                    Implement structured follow-up plan and regular check-ins.
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"""
+                            <div class="risk-card-low">
+                                <div class="risk-score-number">{risk_score}/10</div>
+                                <div class="risk-score-label">✓ LOW RISK PATIENT</div>
+                                <div class="risk-description">
+                                    <strong>Routine follow-up and preventive care recommended.</strong><br><br>
+                                    This patient is stable with minimal acute risk factors. 
+                                    Continue regular monitoring and maintain current treatment plan.
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                         
                         st.markdown("")
                         
