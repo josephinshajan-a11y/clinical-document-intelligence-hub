@@ -2,6 +2,9 @@ import streamlit as st
 import json
 from groq import Groq
 import PyPDF2
+import base64
+from PIL import Image
+import io
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
@@ -113,19 +116,18 @@ st.markdown("""
     }
     
     .medications-section {
-        background: #ffffff !important;
-        border-left: 5px solid #5ba3d0;
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        color: #1a2a4a !important;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        border-left: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        margin-bottom: 0 !important;
     }
     
     .med-item {
         padding: 0.5rem 0;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: none;
         font-weight: 500;
+        color: #ffffff !important;
     }
     
     .med-item:last-child {
@@ -310,6 +312,18 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
+# Function to encode image to base64
+def image_to_base64(image_file):
+    try:
+        img = Image.open(image_file)
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return img_str
+    except Exception as e:
+        st.error(f"Error processing image: {str(e)}")
+        return None
+
 # Sidebar
 with st.sidebar:
     st.markdown("### Clinical Intelligence Assistant")
@@ -322,6 +336,7 @@ with st.sidebar:
     **Supported formats:**
     - Text (paste directly)
     - PDF files
+    - Images (JPG, PNG)
     
     **What it does:**
     - Extracts patient information
@@ -346,15 +361,16 @@ col_input, col_results = st.columns([1, 1.2], gap="large")
 with col_input:
     st.markdown("## 1. Input Document")
     
-    # Input method selection
+    # Input method selection - HORIZONTAL
     input_type = st.radio(
         "Choose input method:",
-        ["Paste Text", "Upload PDF"],
+        ["Paste Text", "Upload PDF", "Upload Image"],
         label_visibility="collapsed",
-        horizontal=False
+        horizontal=True
     )
     
     document_text = ""
+    image_base64 = None
     
     # Handle different input types
     if input_type == "Paste Text":
@@ -373,20 +389,70 @@ with col_input:
                 if document_text:
                     st.success("PDF text extracted successfully")
     
+    elif input_type == "Upload Image":
+        image_file = st.file_uploader("Upload image file", type=['jpg', 'jpeg', 'png'], label_visibility="collapsed")
+        if image_file:
+            with st.spinner("Processing image..."):
+                img = Image.open(image_file)
+                st.image(img, use_column_width=True)
+                image_base64 = image_to_base64(image_file)
+                if image_base64:
+                    st.success("Image uploaded successfully")
+                    document_text = "[Image uploaded - AI will analyze the visual content]"
+    
     st.markdown("")
     
     # Analyze button
     if st.button("Analyze Document", use_container_width=True):
-        if not document_text.strip():
-            st.error("Please provide a document to analyze")
+        if not document_text.strip() and not image_base64:
+            st.error("Please provide a document or image to analyze")
         else:
             with st.spinner("Processing..."):
                 try:
-                    # Call Groq API
-                    response = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        max_tokens=1500,
-                        messages=[
+                    # Build message content
+                    if image_base64:
+                        # Message with image
+                        messages = [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": f"""Extract structured clinical information from this medical image. Return ONLY valid JSON, no markdown formatting.
+
+{{
+    "patient_name": "name or 'Not specified'",
+    "age": "age or 'Not specified'",
+    "gender": "gender or 'Not specified'",
+    "chief_complaint": "main complaint from image",
+    "medications": ["med1", "med2"],
+    "past_medical_history": ["condition1", "condition2"],
+    "vital_signs": {{
+        "blood_pressure": "value",
+        "heart_rate": "value",
+        "temperature": "value"
+    }},
+    "clinical_summary": "brief summary including any medications visible and their purpose",
+    "risk_flags": ["risk1", "risk2"],
+    "recommended_next_steps": ["step1", "step2"],
+    "confidence_score": 0.85
+}}
+
+Analyze the medical image and extract the clinical information."""
+                    },
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/png",
+                            "data": image_base64
+                        }
+                    }
+                        ]
+                    ]
+                    else:
+                        # Text message
+                        messages = [
                             {
                                 "role": "user",
                                 "content": f"""Extract structured clinical information from this document. Return ONLY valid JSON, no markdown formatting.
@@ -413,6 +479,12 @@ Document:
 {document_text}"""
                             }
                         ]
+                    
+                    # Call Groq API
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        max_tokens=1500,
+                        messages=messages
                     )
                     
                     # Parse response
@@ -480,7 +552,7 @@ Document:
                                 st.markdown(f'<div class="med-item">• {med}</div>', unsafe_allow_html=True)
                             st.markdown('</div>', unsafe_allow_html=True)
                         else:
-                            st.markdown('<div class="medications-section">No medications recorded</div>', unsafe_allow_html=True)
+                            st.markdown('<div class="medications-section"><div class="med-item">No medications recorded</div></div>', unsafe_allow_html=True)
                         
                         # Risk flags and next steps
                         col_risks, col_steps = st.columns([1, 1])
