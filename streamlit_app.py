@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
 
-client = Groq(api_key=api_key)
 
 # Initialize Groq - using OpenAI-compatible API
 client = Groq(api_key=api_key)
