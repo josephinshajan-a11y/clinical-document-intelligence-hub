@@ -541,7 +541,7 @@ st.divider()
 col_input, col_results = st.columns([1, 1.2], gap="large")
 
 with col_input:
-    st.markdown("## 1. Input Document")
+    st.markdown("## Input Document")
     
     input_type = st.radio(
         "Choose input method:",
@@ -632,7 +632,7 @@ Document:
                     risk_score = calculate_risk_score(patient_data)
                     risk_level, risk_color = get_risk_level(risk_score)
                     
-                    st.markdown("## ⚕️ Risk Stratification")
+                    st.markdown("## Risk Stratification")
                     if risk_level == "HIGH":
                         st.markdown(f"""
                         <div class="risk-card-high">
@@ -672,20 +672,22 @@ Document:
                     
                     st.markdown("")
                     
-                    pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
-                    patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
-                    st.download_button(
-                        label="📥 Download Report (PDF)",
-                        data=pdf_buffer,
-                        file_name=f"Clinical_Report_{patient_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
+                    st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
                     
                     with col_results:
-                        st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
+                        pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
+                        patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
+                        st.download_button(
+                            label="📥 Download Report (PDF)",
+                            data=pdf_buffer,
+                            file_name=f"Clinical_Report_{patient_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
                         
-                        st.markdown("## 2. Patient Summary")
+                        st.markdown("")
+                        
+                        st.markdown("## Patient Summary")
                         name = patient_data.get("patient_name", "N/A")
                         age = patient_data.get("age", "N/A")
                         gender = patient_data.get("gender", "N/A")
@@ -709,11 +711,11 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown("## 3. Clinical Summary")
+                        st.markdown("## Clinical Summary")
                         summary = patient_data.get("clinical_summary", "No summary")
                         st.markdown(f'<div class="clinical-summary">{summary}</div>', unsafe_allow_html=True)
                         
-                        st.markdown("## 4. Current Medications")
+                        st.markdown("## Current Medications")
                         medications = patient_data.get("medications", [])
                         if medications and len(medications) > 0:
                             st.markdown('<div class="medications-section">', unsafe_allow_html=True)
@@ -726,7 +728,7 @@ Document:
                         col_risks, col_steps = st.columns([1, 1])
                         
                         with col_risks:
-                            st.markdown("## 5. Risk Flags")
+                            st.markdown("## Risk Flags")
                             risk_flags = patient_data.get("risk_flags", [])
                             if risk_flags and len(risk_flags) > 0:
                                 for risk in risk_flags:
@@ -735,7 +737,7 @@ Document:
                                 st.markdown('<div class="risk-item"><span class="risk-dot risk-low"></span> No critical risks</div>', unsafe_allow_html=True)
                         
                         with col_steps:
-                            st.markdown("## 6. Next Steps")
+                            st.markdown("## Next Steps")
                             next_steps = patient_data.get("recommended_next_steps", [])
                             if next_steps and len(next_steps) > 0:
                                 st.markdown('<ul class="steps-list">', unsafe_allow_html=True)
@@ -745,7 +747,7 @@ Document:
                             else:
                                 st.markdown('<p style="color: #9bc5e6;">No specific recommendations</p>', unsafe_allow_html=True)
                         
-                        st.markdown("## 7. Vital Signs")
+                        st.markdown("## Vital Signs")
                         vitals = patient_data.get("vital_signs", {})
                         bp = vitals.get("blood_pressure", "N/A") if vitals else "N/A"
                         hr = vitals.get("heart_rate", "N/A") if vitals else "N/A"
@@ -768,7 +770,7 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown("## 8. Confidence")
+                        st.markdown("## Confidence")
                         confidence = patient_data.get("confidence_score", 0)
                         confidence_pct = int(confidence * 100)
                         
