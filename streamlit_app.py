@@ -3,13 +3,21 @@ import json
 from groq import Groq
 import os
 from dotenv import load_dotenv
+import PyPDF2
+import easyocr
+from PIL import Image
+import io
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
 
-
-# Initialize Groq - using OpenAI-compatible API
+# Initialize Groq
 client = Groq(api_key=api_key)
+
+# Initialize OCR reader (cached for performance)
+@st.cache_resource
+def load_ocr_reader():
+    return easyocr.Reader(['en'])
 
 # Page config
 st.set_page_config(
@@ -18,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom styling - Dark Blue & White Theme with BRIGHT VISIBLE TEXT
+# Custom styling - Dark Blue & White Theme
 st.markdown("""
 <style>
     * {
@@ -42,7 +50,6 @@ st.markdown("""
         border-right: 2px solid #2d5a8c !important;
     }
     
-    /* Sidebar text - BRIGHT WHITE */
     [data-testid="stSidebar"] {
         color: #ffffff !important;
     }
@@ -55,7 +62,6 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Main headings - BRIGHT WHITE AND BOLD */
     h1 {
         color: #ffffff !important;
         font-weight: 700 !important;
@@ -77,7 +83,6 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Patient card - white background */
     .patient-card {
         background: #ffffff !important;
         padding: 2rem;
@@ -106,7 +111,6 @@ st.markdown("""
         color: #1a2a4a !important;
     }
     
-    /* Clinical summary */
     .clinical-summary {
         background: #ffffff !important;
         border-left: 5px solid #2d5a8c;
@@ -118,7 +122,26 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
     
-    /* Risk items */
+    .medications-section {
+        background: #ffffff !important;
+        border-left: 5px solid #5ba3d0;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        color: #1a2a4a !important;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .med-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e0e0e0;
+        font-weight: 500;
+    }
+    
+    .med-item:last-child {
+        border-bottom: none;
+    }
+    
     .risk-item {
         display: flex;
         align-items: center;
@@ -149,7 +172,6 @@ st.markdown("""
         background-color: #51cf66;
     }
     
-    /* Steps list */
     .steps-list li {
         padding: 0.75rem 0;
         color: #ffffff !important;
@@ -168,7 +190,6 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Vital signs */
     .vital-item {
         padding: 0.75rem 0;
         display: flex;
@@ -191,7 +212,6 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Confidence */
     .confidence-value {
         font-size: 2.5rem;
         font-weight: 700;
@@ -214,7 +234,6 @@ st.markdown("""
         border-radius: 4px;
     }
     
-    /* Success message */
     .success-msg {
         background: #1a5f3f;
         border-left: 5px solid #51cf66;
@@ -225,7 +244,6 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Button */
     .stButton > button {
         background: linear-gradient(135deg, #2d5a8c 0%, #1e3f5a 100%) !important;
         color: white !important;
@@ -243,7 +261,6 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(93, 163, 208, 0.4);
     }
     
-    /* Radio buttons */
     [data-testid="stRadio"] {
         color: #ffffff !important;
     }
@@ -256,19 +273,16 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Text areas and inputs */
     [data-testid="stTextArea"] textarea {
         background-color: #0f1823 !important;
         color: #ffffff !important;
         border: 2px solid #2d5a8c !important;
     }
     
-    /* Divider */
     hr {
         border-color: #2d5a8c !important;
     }
     
-    /* Footer */
     .footer {
         text-align: center;
         padding: 2rem 0;
@@ -278,7 +292,6 @@ st.markdown("""
         margin-top: 3rem;
     }
     
-    /* Expander */
     [data-testid="stExpander"] {
         background-color: #0f1823 !important;
         border: 1px solid #2d5a8c !important;
@@ -295,19 +308,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sidebar - info and navigation
+# Function to extract text from PDF
+def extract_text_from_pdf(pdf_file):
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        return text
+    except Exception as e:
+        st.error(f"Error reading PDF: {str(e)}")
+        return ""
+
+# Function to extract text from image using OCR
+def extract_text_from_image(image_file):
+    try:
+        image = Image.open(image_file)
+        reader = load_ocr_reader()
+        results = reader.readtext(image)
+        text = "\n".join([result[1] for result in results])
+        return text
+    except Exception as e:
+        st.error(f"Error reading image: {str(e)}")
+        return ""
+
+# Sidebar
 with st.sidebar:
     st.markdown("### Clinical Intelligence Assistant")
     st.divider()
     
     st.markdown("### About")
     st.markdown("""
-    This tool extracts structured clinical data from unstructured documents using Groq AI.
+    This tool extracts structured clinical data from documents using Groq AI.
+    
+    **Supported formats:**
+    - Text (paste)
+    - PDF files
+    - Images (JPG, PNG)
     
     **What it does:**
     - Extracts patient information
     - Identifies risk flags
     - Summarizes clinical findings
+    - Lists current medications
     - Provides confidence scoring
     """)
     
@@ -320,21 +363,23 @@ st.markdown("# Clinical Intelligence Assistant")
 st.markdown("Extract patient information and identify clinical risks from documents.")
 st.divider()
 
-# Main layout - input on left, results on right
+# Main layout
 col_input, col_results = st.columns([1, 1.2], gap="large")
 
 with col_input:
     st.markdown("## 1. Input Document")
     
-    # Radio button for input method
+    # Input method selection
     input_type = st.radio(
         "Choose input method:",
-        ["Paste Text", "Upload File"],
+        ["Paste Text", "Upload PDF", "Upload Image"],
         label_visibility="collapsed",
-        horizontal=True
+        horizontal=False
     )
     
-    # Get document text based on input method
+    document_text = ""
+    
+    # Handle different input types
     if input_type == "Paste Text":
         document_text = st.text_area(
             "Paste clinical document:",
@@ -342,32 +387,40 @@ with col_input:
             placeholder="Paste the clinical document here...",
             label_visibility="collapsed"
         )
-    else:
-        # Handle file upload
-        uploaded_file = st.file_uploader("Upload text file", type=['txt'], label_visibility="collapsed")
-        if uploaded_file:
-            document_text = uploaded_file.read().decode('utf-8')
-        else:
-            document_text = ""
+    
+    elif input_type == "Upload PDF":
+        pdf_file = st.file_uploader("Upload PDF file", type=['pdf'], label_visibility="collapsed")
+        if pdf_file:
+            with st.spinner("Extracting text from PDF..."):
+                document_text = extract_text_from_pdf(pdf_file)
+                if document_text:
+                    st.success("PDF text extracted successfully")
+    
+    elif input_type == "Upload Image":
+        image_file = st.file_uploader("Upload image (JPG, PNG)", type=['jpg', 'jpeg', 'png'], label_visibility="collapsed")
+        if image_file:
+            with st.spinner("Extracting text from image..."):
+                document_text = extract_text_from_image(image_file)
+                if document_text:
+                    st.success("Image text extracted successfully")
     
     st.markdown("")
-    # Button to trigger analysis
+    
+    # Analyze button
     if st.button("Analyze Document", use_container_width=True):
-        # Validate input
         if not document_text.strip():
             st.error("Please provide a document to analyze")
         else:
-            # Process the document
             with st.spinner("Processing..."):
                 try:
-                    # Call Groq API to extract clinical data
+                    # Call Groq API
                     response = client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
                         max_tokens=1500,
                         messages=[
                             {
                                 "role": "user",
-                                "content": f"""Extract structured clinical information from this document. Return ONLY valid JSON, no markdown formatting, no code blocks.
+                                "content": f"""Extract structured clinical information from this document. Return ONLY valid JSON, no markdown formatting.
 
 {{
     "patient_name": "name or 'Not specified'",
@@ -381,7 +434,7 @@ with col_input:
         "heart_rate": "value",
         "temperature": "value"
     }},
-    "clinical_summary": "brief summary",
+    "clinical_summary": "brief summary including current medications and their purpose",
     "risk_flags": ["risk1", "risk2"],
     "recommended_next_steps": ["step1", "step2"],
     "confidence_score": 0.85
@@ -393,10 +446,10 @@ Document:
                         ]
                     )
                     
-                    # Parse the response
+                    # Parse response
                     response_text = response.choices[0].message.content.strip()
                     
-                    # Clean up response - remove markdown code blocks
+                    # Clean up markdown formatting
                     clean_text = response_text
                     if clean_text.startswith("```"):
                         parts = clean_text.split("```")
@@ -407,7 +460,7 @@ Document:
                     
                     clean_text = clean_text.strip()
                     
-                    # Try to parse JSON
+                    # Parse JSON
                     try:
                         patient_data = json.loads(clean_text)
                     except json.JSONDecodeError as e:
@@ -415,11 +468,11 @@ Document:
                         st.code(response_text)
                         st.stop()
                     
-                    # Display results in right column
+                    # Display results
                     with col_results:
                         st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
                         
-                        # Patient info card
+                        # Patient info
                         st.markdown("## 2. Patient Summary")
                         name = patient_data.get("patient_name", "N/A")
                         age = patient_data.get("age", "N/A")
@@ -449,11 +502,22 @@ Document:
                         summary = patient_data.get("clinical_summary", "No summary")
                         st.markdown(f'<div class="clinical-summary">{summary}</div>', unsafe_allow_html=True)
                         
-                        # Risk flags and next steps in two columns
+                        # Current medications
+                        st.markdown("## 4. Current Medications")
+                        medications = patient_data.get("medications", [])
+                        if medications and len(medications) > 0:
+                            st.markdown('<div class="medications-section">', unsafe_allow_html=True)
+                            for med in medications:
+                                st.markdown(f'<div class="med-item">• {med}</div>', unsafe_allow_html=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="medications-section">No medications recorded</div>', unsafe_allow_html=True)
+                        
+                        # Risk flags and next steps
                         col_risks, col_steps = st.columns([1, 1])
                         
                         with col_risks:
-                            st.markdown("## 4. Risk Flags")
+                            st.markdown("## 5. Risk Flags")
                             risk_flags = patient_data.get("risk_flags", [])
                             if risk_flags and len(risk_flags) > 0:
                                 for risk in risk_flags:
@@ -462,7 +526,7 @@ Document:
                                 st.markdown('<div class="risk-item"><span class="risk-dot risk-low"></span> No critical risks</div>', unsafe_allow_html=True)
                         
                         with col_steps:
-                            st.markdown("## 5. Next Steps")
+                            st.markdown("## 6. Next Steps")
                             next_steps = patient_data.get("recommended_next_steps", [])
                             if next_steps and len(next_steps) > 0:
                                 st.markdown('<ul class="steps-list">', unsafe_allow_html=True)
@@ -473,7 +537,7 @@ Document:
                                 st.markdown('<p style="color: #9bc5e6;">No specific recommendations</p>', unsafe_allow_html=True)
                         
                         # Vital signs
-                        st.markdown("## 6. Vital Signs")
+                        st.markdown("## 7. Vital Signs")
                         vitals = patient_data.get("vital_signs", {})
                         bp = vitals.get("blood_pressure", "N/A") if vitals else "N/A"
                         hr = vitals.get("heart_rate", "N/A") if vitals else "N/A"
@@ -496,8 +560,8 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Confidence score
-                        st.markdown("## 7. Confidence")
+                        # Confidence
+                        st.markdown("## 8. Confidence")
                         confidence = patient_data.get("confidence_score", 0)
                         confidence_pct = int(confidence * 100)
                         
@@ -511,7 +575,7 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Show raw JSON if needed
+                        # Raw JSON
                         with st.expander("View JSON"):
                             st.json(patient_data)
                 
