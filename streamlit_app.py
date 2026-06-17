@@ -227,27 +227,47 @@ st.markdown("""
         font-weight: 600;
     }
     
-.stButton > button {
-    background: #2563eb !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 0.5rem !important;
-    padding: 0.875rem 2rem !important;
-    font-weight: 700 !important;
-    width: 100% !important;
-    font-size: 1rem !important;
-    transition: all 0.3s ease !important;
-    text-align: center !important;
-}
-
-.stButton > button:hover {
-    background: #1d4ed8 !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
-}
-
-.stButton > button span {
-    color: #ffffff !important;
-}    
+    button {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    
+    button:hover {
+        background: #1d4ed8 !important;
+    }
+    
+    .stButton > button {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        padding: 0.875rem 2rem !important;
+        font-weight: 700 !important;
+        width: 100% !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stButton > button:hover {
+        background: #1d4ed8 !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+    }
+    
+    .stButton > button span {
+        color: #ffffff !important;
+    }
+    
+    [data-testid="stFileUploadDropzone"] button {
+        background: #2563eb !important;
+        color: #ffffff !important;
+    }
+    
+    [data-testid="stDownloadButton"] button {
+        background: #2563eb !important;
+        color: #ffffff !important;
+    }
+    
     [data-testid="stRadio"] label,
     [data-testid="stRadio"] span {
         color: #ffffff !important;
