@@ -5,8 +5,6 @@ import PyPDF2
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
-
-# Initialize Groq
 client = Groq(api_key=api_key)
 
 # Page config
@@ -38,10 +36,6 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background-color: #0f1823 !important;
         border-right: 2px solid #2d5a8c !important;
-    }
-    
-    [data-testid="stSidebar"] {
-        color: #ffffff !important;
     }
     
     [data-testid="stSidebar"] h3,
@@ -125,10 +119,6 @@ st.markdown("""
         border-bottom: none;
         font-weight: 500;
         color: #ffffff !important;
-    }
-    
-    .med-item:last-child {
-        border-bottom: none;
     }
     
     .risk-item {
@@ -250,14 +240,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(93, 163, 208, 0.4);
     }
     
-    [data-testid="stRadio"] {
-        color: #ffffff !important;
-    }
-    
-    [data-testid="stRadio"] label {
-        color: #ffffff !important;
-    }
-    
+    [data-testid="stRadio"] label,
     [data-testid="stRadio"] span {
         color: #ffffff !important;
     }
@@ -280,20 +263,6 @@ st.markdown("""
         font-size: 0.875rem;
         margin-top: 3rem;
     }
-    
-    [data-testid="stExpander"] {
-        background-color: #0f1823 !important;
-        border: 1px solid #2d5a8c !important;
-    }
-    
-    [data-testid="stExpander"] button {
-        color: #ffffff !important;
-    }
-    
-    [data-testid="stExpander"] button span {
-        color: #ffffff !important;
-    }
-    
 </style>
 """, unsafe_allow_html=True)
 
@@ -345,7 +314,7 @@ col_input, col_results = st.columns([1, 1.2], gap="large")
 with col_input:
     st.markdown("## 1. Input Document")
     
-    # Input method selection - HORIZONTAL
+    # Input method selection
     input_type = st.radio(
         "Choose input method:",
         ["Paste Text", "Upload PDF"],
