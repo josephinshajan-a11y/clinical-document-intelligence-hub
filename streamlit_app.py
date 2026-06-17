@@ -632,6 +632,10 @@ Document:
                     risk_score = calculate_risk_score(patient_data)
                     risk_level, risk_color = get_risk_level(risk_score)
                     
+                    st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("")
+                    
                     st.markdown("## Risk Stratification")
                     if risk_level == "HIGH":
                         st.markdown(f"""
@@ -669,10 +673,6 @@ Document:
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
-                    
-                    st.markdown("")
-                    
-                    st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
                     
                     with col_results:
                         pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
