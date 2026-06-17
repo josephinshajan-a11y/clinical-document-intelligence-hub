@@ -2,10 +2,6 @@ import streamlit as st
 import json
 from groq import Groq
 import PyPDF2
-import matplotlib.pyplot as plt
-from fpdf import FPDF
-import io
-from datetime import datetime
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
@@ -105,43 +101,6 @@ st.markdown("""
         color: #1a2a4a !important;
     }
     
-    .risk-score-card {
-        background: linear-gradient(135deg, #2d5a8c 0%, #1e3f5a 100%);
-        padding: 2rem;
-        border-radius: 0.75rem;
-        margin-bottom: 1.5rem;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        border: 2px solid #5ba3d0;
-    }
-    
-    .risk-score-label {
-        font-size: 0.875rem;
-        color: #9bc5e6;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-    }
-    
-    .risk-score-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-    
-    .risk-high {
-        color: #ff6b6b;
-    }
-    
-    .risk-medium {
-        color: #ffd93d;
-    }
-    
-    .risk-low {
-        color: #51cf66;
-    }
-    
     .clinical-summary {
         background: #ffffff !important;
         border-left: 5px solid #2d5a8c;
@@ -194,11 +153,11 @@ st.markdown("""
         flex-shrink: 0;
     }
     
-    .risk-dot-high {
+    .risk-high {
         background-color: #ff6b6b;
     }
     
-    .risk-dot-low {
+    .risk-low {
         background-color: #51cf66;
     }
     
@@ -242,10 +201,6 @@ st.markdown("""
         font-weight: 700;
     }
     
-    .vital-critical {
-        color: #ff6b6b !important;
-    }
-    
     .confidence-value {
         font-size: 2.5rem;
         font-weight: 700;
@@ -274,26 +229,6 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.5rem;
         color: #51cf66 !important;
-        margin-bottom: 1rem;
-        font-weight: 600;
-    }
-    
-    .critical-alert {
-        background: #5f1a1a;
-        border-left: 5px solid #ff6b6b;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        color: #ff6b6b !important;
-        margin-bottom: 1rem;
-        font-weight: 600;
-    }
-    
-    .warning-alert {
-        background: #5f4a1a;
-        border-left: 5px solid #ffd93d;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        color: #ffd93d !important;
         margin-bottom: 1rem;
         font-weight: 600;
     }
@@ -362,303 +297,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# CLINICAL DECISION SUPPORT FUNCTIONS
-# ============================================================================
-
-def calculate_risk_score(patient_data):
-    """Calculate overall risk score (0-1)"""
-    risk_points = 0
-    max_points = 0
-    
-    # Check vital signs
-    vitals = patient_data.get("vital_signs", {})
-    if vitals:
-        bp = vitals.get("blood_pressure", "")
-        hr = vitals.get("heart_rate", "")
-        temp = vitals.get("temperature", "")
-        
-        # Parse BP
-        if bp and "/" in str(bp):
-            try:
-                systolic = int(bp.split("/")[0])
-                if systolic > 180 or systolic < 90:
-                    risk_points += 2
-            except:
-                pass
-        
-        # Parse HR
-        if hr:
-            try:
-                hr_val = int(''.join(filter(str.isdigit, str(hr))))
-                if hr_val > 120 or hr_val < 60:
-                    risk_points += 1.5
-            except:
-                pass
-    
-    max_points += 3.5
-    
-    # Check risk flags
-    risk_flags = patient_data.get("risk_flags", [])
-    if risk_flags:
-        risk_points += len(risk_flags) * 1.5
-    max_points += 10
-    
-    # Check medications (polypharmacy)
-    meds = patient_data.get("medications", [])
-    if len(meds) > 5:
-        risk_points += 1
-    max_points += 1
-    
-    # Normalize to 0-1
-    if max_points > 0:
-        score = min(risk_points / max_points, 1.0)
-    else:
-        score = 0
-    
-    return score
-
-def get_risk_level(score):
-    """Convert risk score to level"""
-    if score >= 0.7:
-        return "🔴 HIGH", "risk-high"
-    elif score >= 0.4:
-        return "🟠 MEDIUM", "risk-medium"
-    else:
-        return "🟢 LOW", "risk-low"
-
-def check_critical_values(patient_data):
-    """Check for critical vital signs"""
-    alerts = []
-    vitals = patient_data.get("vital_signs", {})
-    
-    if vitals:
-        bp = vitals.get("blood_pressure", "")
-        hr = vitals.get("heart_rate", "")
-        temp = vitals.get("temperature", "")
-        
-        # Critical BP
-        if bp and "/" in str(bp):
-            try:
-                sys_val = int(bp.split("/")[0])
-                dia_val = int(bp.split("/")[1])
-                if sys_val > 180 or dia_val > 120:
-                    alerts.append("⚠️ CRITICAL: Blood Pressure elevated (>180/120)")
-                elif sys_val < 90 or dia_val < 60:
-                    alerts.append("⚠️ CRITICAL: Blood Pressure low (<90/60) - Hypotension")
-            except:
-                pass
-        
-        # Critical HR
-        if hr:
-            try:
-                hr_val = int(''.join(filter(str.isdigit, str(hr))))
-                if hr_val > 120:
-                    alerts.append("⚠️ CRITICAL: Heart Rate elevated (>120 bpm) - Tachycardia")
-                elif hr_val < 60:
-                    alerts.append("⚠️ CRITICAL: Heart Rate low (<60 bpm) - Bradycardia")
-            except:
-                pass
-        
-        # Critical Temperature
-        if temp:
-            try:
-                temp_val = float(''.join(filter(lambda x: x.isdigit() or x == '.', str(temp))))
-                if temp_val > 39.5:
-                    alerts.append("⚠️ CRITICAL: High Fever (>39.5°C/103.1°F)")
-                elif temp_val < 36:
-                    alerts.append("⚠️ CRITICAL: Hypothermia (<36°C/96.8°F)")
-            except:
-                pass
-    
-    return alerts
-
-def check_drug_interactions(medications):
-    """Check for common drug interactions"""
-    interactions = []
-    
-    # Common interaction pairs
-    interaction_database = {
-        ("metformin", "contrast"): "Metformin + Contrast: Risk of renal impairment",
-        ("warfarin", "aspirin"): "Warfarin + Aspirin: Increased bleeding risk",
-        ("lisinopril", "potassium"): "ACE Inhibitor + Potassium: Hyperkalemia risk",
-        ("nsaid", "lisinopril"): "NSAID + ACE Inhibitor: Renal impairment risk",
-        ("statin", "fibrate"): "Statin + Fibrate: Myopathy risk",
-    }
-    
-    med_lower = [med.lower() for med in medications]
-    
-    for (drug1, drug2), warning in interaction_database.items():
-        if any(drug1 in med for med in med_lower) and any(drug2 in med for med in med_lower):
-            interactions.append(f"⚠️ {warning}")
-    
-    return interactions
-
-def create_vital_chart(vital_signs):
-    """Create a chart of vital signs"""
-    fig, ax = plt.subplots(figsize=(10, 4))
-    fig.patch.set_facecolor('#1a2a4a')
-    ax.set_facecolor('#0f1823')
-    
-    vitals_display = []
-    values = []
-    colors = []
-    
-    if vital_signs.get("blood_pressure"):
-        vitals_display.append("BP (Systolic)")
-        try:
-            sys = int(vital_signs["blood_pressure"].split("/")[0])
-            values.append(sys)
-            colors.append('#5ba3d0' if sys < 140 else '#ff6b6b')
-        except:
-            pass
-    
-    if vital_signs.get("heart_rate"):
-        vitals_display.append("HR (bpm)")
-        try:
-            hr = int(''.join(filter(str.isdigit, str(vital_signs["heart_rate"]))))
-            values.append(hr)
-            colors.append('#5ba3d0' if 60 <= hr <= 100 else '#ff6b6b')
-        except:
-            pass
-    
-    if vitals_display:
-        bars = ax.bar(vitals_display, values, color=colors, edgecolor='#2d5a8c', linewidth=2)
-        ax.set_ylabel('Value', color='#ffffff', fontweight='bold')
-        ax.tick_params(colors='#ffffff')
-        ax.spines['bottom'].set_color('#2d5a8c')
-        ax.spines['left'].set_color('#2d5a8c')
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-        return fig
-    
-    return None
-
-def generate_pdf_report(patient_data, risk_level, critical_alerts, drug_interactions):
-    """Generate PDF report"""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 10, "Clinical Intelligence Report", ln=True, align="C")
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="C")
-    
-    pdf.ln(5)
-    
-    # Patient Info
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "PATIENT SUMMARY", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, f"Name: {patient_data.get('patient_name', 'N/A')}", ln=True)
-    pdf.cell(0, 6, f"Age: {patient_data.get('age', 'N/A')}", ln=True)
-    pdf.cell(0, 6, f"Gender: {patient_data.get('gender', 'N/A')}", ln=True)
-    
-    pdf.ln(3)
-    
-    # Risk Score
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "RISK ASSESSMENT", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 6, f"Risk Level: {risk_level[0]}", ln=True)
-    
-    pdf.ln(3)
-    
-    # Critical Alerts
-    if critical_alerts:
-        pdf.set_font("Arial", "B", 12)
-        pdf.set_text_color(255, 107, 107)
-        pdf.cell(0, 8, "CRITICAL ALERTS", ln=True)
-        
-        pdf.set_font("Arial", "", 10)
-        pdf.set_text_color(0, 0, 0)
-        for alert in critical_alerts:
-            pdf.multi_cell(0, 6, f"• {alert}")
-        
-        pdf.ln(3)
-    
-    # Drug Interactions
-    if drug_interactions:
-        pdf.set_font("Arial", "B", 12)
-        pdf.set_text_color(255, 217, 61)
-        pdf.cell(0, 8, "DRUG INTERACTIONS", ln=True)
-        
-        pdf.set_font("Arial", "", 10)
-        pdf.set_text_color(0, 0, 0)
-        for interaction in drug_interactions:
-            pdf.multi_cell(0, 6, f"• {interaction}")
-        
-        pdf.ln(3)
-    
-    # Clinical Summary
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "CLINICAL SUMMARY", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    summary = patient_data.get("clinical_summary", "N/A")
-    pdf.multi_cell(0, 6, summary)
-    
-    pdf.ln(3)
-    
-    # Medications
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "CURRENT MEDICATIONS", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    meds = patient_data.get("medications", [])
-    if meds:
-        for med in meds:
-            pdf.cell(0, 6, f"• {med}", ln=True)
-    else:
-        pdf.cell(0, 6, "No medications recorded", ln=True)
-    
-    pdf.ln(3)
-    
-    # Risk Flags
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "IDENTIFIED RISKS", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    risks = patient_data.get("risk_flags", [])
-    if risks:
-        for risk in risks:
-            pdf.multi_cell(0, 6, f"• {risk}")
-    else:
-        pdf.cell(0, 6, "No significant risks identified", ln=True)
-    
-    pdf.ln(3)
-    
-    # Next Steps
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(45, 90, 140)
-    pdf.cell(0, 8, "RECOMMENDED NEXT STEPS", ln=True)
-    
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(0, 0, 0)
-    steps = patient_data.get("recommended_next_steps", [])
-    if steps:
-        for step in steps:
-            pdf.multi_cell(0, 6, f"• {step}")
-    else:
-        pdf.cell(0, 6, "Continue standard monitoring", ln=True)
-    
-    return pdf.output(dest='S').encode('latin-1')
-
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     try:
@@ -678,19 +316,18 @@ with st.sidebar:
     
     st.markdown("### About")
     st.markdown("""
-    Advanced clinical document analysis with:
-    
-    **Features:**
-    - AI-powered extraction
-    - Risk scoring (Low/Medium/High)
-    - Critical value alerts
-    - Drug interaction checking
-    - Vital signs visualization
-    - Professional PDF export
+    This tool extracts structured clinical data from documents using Groq AI.
     
     **Supported formats:**
     - Text (paste directly)
     - PDF files
+    
+    **What it does:**
+    - Extracts patient information
+    - Identifies risk flags
+    - Summarizes clinical findings
+    - Lists current medications
+    - Provides confidence scoring
     """)
     
     st.divider()
@@ -802,36 +439,9 @@ Document:
                         st.code(response_text)
                         st.stop()
                     
-                    # ===== CALCULATE CLINICAL SCORES & ALERTS =====
-                    risk_score = calculate_risk_score(patient_data)
-                    risk_level = get_risk_level(risk_score)
-                    critical_alerts = check_critical_values(patient_data)
-                    drug_interactions = check_drug_interactions(patient_data.get("medications", []))
-                    pdf_report = generate_pdf_report(patient_data, risk_level, critical_alerts, drug_interactions)
-                    
                     # Display results
                     with col_results:
                         st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
-                        
-                        # RISK SCORE CARD
-                        risk_color_class = risk_level[1]
-                        st.markdown(f"""
-                        <div class="risk-score-card">
-                            <div class="risk-score-label">Overall Risk Score</div>
-                            <div class="risk-score-value {risk_color_class}">{risk_level[0]}</div>
-                            <div style="font-size: 0.875rem; color: #9bc5e6;">({risk_score:.0%} Risk)</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # CRITICAL ALERTS
-                        if critical_alerts:
-                            for alert in critical_alerts:
-                                st.markdown(f'<div class="critical-alert">{alert}</div>', unsafe_allow_html=True)
-                        
-                        # DRUG INTERACTIONS
-                        if drug_interactions:
-                            for interaction in drug_interactions:
-                                st.markdown(f'<div class="warning-alert">{interaction}</div>', unsafe_allow_html=True)
                         
                         # Patient info
                         st.markdown("## 2. Patient Summary")
@@ -882,9 +492,9 @@ Document:
                             risk_flags = patient_data.get("risk_flags", [])
                             if risk_flags and len(risk_flags) > 0:
                                 for risk in risk_flags:
-                                    st.markdown(f'<div class="risk-item"><span class="risk-dot risk-dot-high"></span> {risk}</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="risk-item"><span class="risk-dot risk-high"></span> {risk}</div>', unsafe_allow_html=True)
                             else:
-                                st.markdown('<div class="risk-item"><span class="risk-dot risk-dot-low"></span> No critical risks</div>', unsafe_allow_html=True)
+                                st.markdown('<div class="risk-item"><span class="risk-dot risk-low"></span> No critical risks</div>', unsafe_allow_html=True)
                         
                         with col_steps:
                             st.markdown("## 6. Next Steps")
@@ -904,22 +514,11 @@ Document:
                         hr = vitals.get("heart_rate", "N/A") if vitals else "N/A"
                         temp = vitals.get("temperature", "N/A") if vitals else "N/A"
                         
-                        # Check if critical
-                        bp_critical = False
-                        if bp != "N/A" and "/" in str(bp):
-                            try:
-                                sys = int(str(bp).split("/")[0])
-                                bp_critical = sys > 180 or sys < 90
-                            except:
-                                pass
-                        
-                        bp_class = "vital-critical" if bp_critical else ""
-                        
                         st.markdown(f"""
                         <div>
                             <div class="vital-item">
                                 <span class="vital-label">Blood Pressure</span>
-                                <span class="vital-value {bp_class}">{bp}</span>
+                                <span class="vital-value">{bp}</span>
                             </div>
                             <div class="vital-item">
                                 <span class="vital-label">Heart Rate</span>
@@ -931,12 +530,6 @@ Document:
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
-                        # Vital Signs Chart
-                        if vitals:
-                            chart = create_vital_chart(vitals)
-                            if chart:
-                                st.pyplot(chart, use_container_width=True)
                         
                         # Confidence
                         st.markdown("## 8. Confidence")
@@ -953,31 +546,11 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Export Options
-                        st.markdown("## 9. Export Report")
-                        col_export1, col_export2 = st.columns(2)
-                        
-                        with col_export1:
-                            st.download_button(
-                                label="📄 Download PDF Report",
-                                data=pdf_report,
-                                file_name=f"clinical_report_{patient_data.get('patient_name', 'patient').replace(' ', '_')}.pdf",
-                                mime="application/pdf"
-                            )
-                        
-                        with col_export2:
-                            st.download_button(
-                                label="📋 Download JSON",
-                                data=json.dumps(patient_data, indent=2),
-                                file_name=f"clinical_data_{patient_data.get('patient_name', 'patient').replace(' ', '_')}.json",
-                                mime="application/json"
-                            )
-                        
                         # Raw JSON
-                        with st.expander("View Raw JSON"):
+                        with st.expander("View JSON"):
                             st.json(patient_data)
                 
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
-st.markdown('<div class="footer">Clinical Intelligence Assistant | Groq API | Advanced Risk Assessment</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Clinical Intelligence Assistant | Groq API</div>', unsafe_allow_html=True)
