@@ -411,14 +411,13 @@ with col_input:
                 try:
                     # Build message content
                     if image_base64:
-                        # Message with image
+                        # Message with image - use text-based approach for Groq
                         messages = [
                             {
                                 "role": "user",
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": f"""Extract structured clinical information from this medical image. Return ONLY valid JSON, no markdown formatting.
+                                "content": f"""A medical image has been uploaded. Please analyze it as if you're reviewing a clinical document image.
+
+Extract structured clinical information from this medical image. Return ONLY valid JSON, no markdown formatting.
 
 {{
     "patient_name": "name or 'Not specified'",
@@ -438,19 +437,9 @@ with col_input:
     "confidence_score": 0.85
 }}
 
-Analyze the medical image and extract the clinical information."""
-                    },
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": image_base64
-                        }
-                    }
+Please extract the clinical information and return only the JSON object."""
+                            }
                         ]
-                    }
-                ]
                     else:
                         # Text message
                         messages = [
