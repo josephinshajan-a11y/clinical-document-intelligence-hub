@@ -449,7 +449,8 @@ Analyze the medical image and extract the clinical information."""
                         }
                     }
                         ]
-                    ]
+                    }
+                ]
                     else:
                         # Text message
                         messages = [
