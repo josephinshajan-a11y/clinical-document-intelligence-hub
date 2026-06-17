@@ -1,23 +1,13 @@
 import streamlit as st
 import json
 from groq import Groq
-import os
-from dotenv import load_dotenv
 import PyPDF2
-import easyocr
-from PIL import Image
-import io
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
 
 # Initialize Groq
 client = Groq(api_key=api_key)
-
-# Initialize OCR reader (cached for performance)
-@st.cache_resource
-def load_ocr_reader():
-    return easyocr.Reader(['en'])
 
 # Page config
 st.set_page_config(
@@ -26,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom styling - Dark Blue & White Theme
+# Custom styling
 st.markdown("""
 <style>
     * {
@@ -320,18 +310,6 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
-# Function to extract text from image using OCR
-def extract_text_from_image(image_file):
-    try:
-        image = Image.open(image_file)
-        reader = load_ocr_reader()
-        results = reader.readtext(image)
-        text = "\n".join([result[1] for result in results])
-        return text
-    except Exception as e:
-        st.error(f"Error reading image: {str(e)}")
-        return ""
-
 # Sidebar
 with st.sidebar:
     st.markdown("### Clinical Intelligence Assistant")
@@ -342,9 +320,8 @@ with st.sidebar:
     This tool extracts structured clinical data from documents using Groq AI.
     
     **Supported formats:**
-    - Text (paste)
+    - Text (paste directly)
     - PDF files
-    - Images (JPG, PNG)
     
     **What it does:**
     - Extracts patient information
@@ -372,7 +349,7 @@ with col_input:
     # Input method selection
     input_type = st.radio(
         "Choose input method:",
-        ["Paste Text", "Upload PDF", "Upload Image"],
+        ["Paste Text", "Upload PDF"],
         label_visibility="collapsed",
         horizontal=False
     )
@@ -395,14 +372,6 @@ with col_input:
                 document_text = extract_text_from_pdf(pdf_file)
                 if document_text:
                     st.success("PDF text extracted successfully")
-    
-    elif input_type == "Upload Image":
-        image_file = st.file_uploader("Upload image (JPG, PNG)", type=['jpg', 'jpeg', 'png'], label_visibility="collapsed")
-        if image_file:
-            with st.spinner("Extracting text from image..."):
-                document_text = extract_text_from_image(image_file)
-                if document_text:
-                    st.success("Image text extracted successfully")
     
     st.markdown("")
     
