@@ -8,7 +8,7 @@
 
 We read a clinical note and extract the important parts: patient name, medications, vital signs, what the doctors flagged as concerns. Then we score how serious the case is based on keywords (chest pain + diabetes + smoking = risky). Finally we suggest follow-up timing based on that score. The whole thing takes 5-10 seconds.
 
-## What We Used
+## What I Used
 
 - **AI**: Llama 3.3 70B language model via Groq API (free tier available)
 - **Website**: Streamlit (simple, deploys free to Streamlit Cloud)
@@ -83,7 +83,7 @@ Found a bug? Open an issue on GitHub. Think the risk scoring is wrong? Let us kn
 This is a demonstration only. Before using in a hospital you'd need: doctor validation, regulatory approval, ethics board sign-off, proper insurance, and HIPAA compliance. The AI's output is a recommendation to review, not a clinical decision.
 
 ---
-  
+
 **GitHub**: https://github.com/josephinshajan-a11y/clinical-document-intelligence-hub  
 **Live App**: https://josephin-clinical-ai-demo-2026.streamlit.app/
 
