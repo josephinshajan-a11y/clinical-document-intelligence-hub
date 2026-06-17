@@ -2,19 +2,23 @@ import streamlit as st
 import json
 from groq import Groq
 import PyPDF2
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from io import BytesIO
+from datetime import datetime
 
-# Get API key
 api_key = st.secrets["GROQ_API_KEY"]
 client = Groq(api_key=api_key)
 
-# Page config
 st.set_page_config(
     page_title="Clinical Intelligence Assistant",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom styling
 st.markdown("""
 <style>
     * {
@@ -266,7 +270,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     try:
         pdf_reader = PyPDF2.PdfReader(pdf_file)
@@ -278,7 +281,121 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
-# Sidebar
+def generate_pdf_report(patient_data):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#2d5a8c'),
+        spaceAfter=12,
+        alignment=1
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#2d5a8c'),
+        spaceAfter=10,
+        spaceBefore=10
+    )
+    
+    elements.append(Paragraph("Clinical Intelligence Report", title_style))
+    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    elements.append(Paragraph("Patient Information", heading_style))
+    patient_info = [
+        ['Name', patient_data.get('patient_name', 'N/A')],
+        ['Age', patient_data.get('age', 'N/A')],
+        ['Gender', patient_data.get('gender', 'N/A')]
+    ]
+    patient_table = Table(patient_info, colWidths=[2*inch, 4*inch])
+    patient_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8f0f7')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+    ]))
+    elements.append(patient_table)
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Chief Complaint", heading_style))
+    chief_complaint = patient_data.get('chief_complaint', 'N/A')
+    elements.append(Paragraph(str(chief_complaint), styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Clinical Summary", heading_style))
+    clinical_summary = patient_data.get('clinical_summary', 'N/A')
+    elements.append(Paragraph(str(clinical_summary), styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Current Medications", heading_style))
+    medications = patient_data.get('medications', [])
+    if medications:
+        for med in medications:
+            elements.append(Paragraph(f"• {str(med)}", styles['Normal']))
+    else:
+        elements.append(Paragraph("No medications recorded", styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Vital Signs", heading_style))
+    vitals = patient_data.get('vital_signs', {})
+    vital_data = [
+        ['Blood Pressure', str(vitals.get('blood_pressure', 'N/A'))],
+        ['Heart Rate', str(vitals.get('heart_rate', 'N/A'))],
+        ['Temperature', str(vitals.get('temperature', 'N/A'))]
+    ]
+    vital_table = Table(vital_data, colWidths=[2*inch, 4*inch])
+    vital_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8f0f7')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+    ]))
+    elements.append(vital_table)
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Risk Flags", heading_style))
+    risk_flags = patient_data.get('risk_flags', [])
+    if risk_flags:
+        for risk in risk_flags:
+            elements.append(Paragraph(f"⚠ {str(risk)}", styles['Normal']))
+    else:
+        elements.append(Paragraph("No critical risks identified", styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Recommended Next Steps", heading_style))
+    next_steps = patient_data.get('recommended_next_steps', [])
+    if next_steps:
+        for step in next_steps:
+            elements.append(Paragraph(f"→ {str(step)}", styles['Normal']))
+    else:
+        elements.append(Paragraph("No specific recommendations", styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    elements.append(Paragraph("Confidence Score", heading_style))
+    confidence = patient_data.get('confidence_score', 0)
+    confidence_pct = int(confidence * 100)
+    elements.append(Paragraph(f"{confidence_pct}% - Analysis Confidence", styles['Normal']))
+    
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
 with st.sidebar:
     st.markdown("### Clinical Intelligence Assistant")
     st.divider()
@@ -303,18 +420,15 @@ with st.sidebar:
     st.markdown("**Status:** Online")
     st.markdown("**Model:** Llama 3.3 70B")
 
-# Header
 st.markdown("# Clinical Intelligence Assistant")
 st.markdown("Extract patient information and identify clinical risks from documents.")
 st.divider()
 
-# Main layout
 col_input, col_results = st.columns([1, 1.2], gap="large")
 
 with col_input:
     st.markdown("## 1. Input Document")
     
-    # Input method selection
     input_type = st.radio(
         "Choose input method:",
         ["Paste Text", "Upload PDF"],
@@ -324,7 +438,6 @@ with col_input:
     
     document_text = ""
     
-    # Handle different input types
     if input_type == "Paste Text":
         document_text = st.text_area(
             "Paste clinical document:",
@@ -343,14 +456,12 @@ with col_input:
     
     st.markdown("")
     
-    # Analyze button
     if st.button("Analyze Document", use_container_width=True):
         if not document_text.strip():
             st.error("Please provide a document to analyze")
         else:
             with st.spinner("Processing..."):
                 try:
-                    # Build message for Groq
                     messages = [
                         {
                             "role": "user",
@@ -379,17 +490,14 @@ Document:
                         }
                     ]
                     
-                    # Call Groq API
                     response = client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
                         max_tokens=1500,
                         messages=messages
                     )
                     
-                    # Parse response
                     response_text = response.choices[0].message.content.strip()
                     
-                    # Clean up markdown formatting
                     clean_text = response_text
                     if clean_text.startswith("```"):
                         parts = clean_text.split("```")
@@ -400,7 +508,6 @@ Document:
                     
                     clean_text = clean_text.strip()
                     
-                    # Parse JSON
                     try:
                         patient_data = json.loads(clean_text)
                     except json.JSONDecodeError as e:
@@ -408,11 +515,21 @@ Document:
                         st.code(response_text)
                         st.stop()
                     
-                    # Display results
                     with col_results:
                         st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
                         
-                        # Patient info
+                        pdf_buffer = generate_pdf_report(patient_data)
+                        patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
+                        st.download_button(
+                            label="📥 Download Report (PDF)",
+                            data=pdf_buffer,
+                            file_name=f"Clinical_Report_{patient_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                        
+                        st.markdown("")
+                        
                         st.markdown("## 2. Patient Summary")
                         name = patient_data.get("patient_name", "N/A")
                         age = patient_data.get("age", "N/A")
@@ -437,12 +554,10 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Clinical summary
                         st.markdown("## 3. Clinical Summary")
                         summary = patient_data.get("clinical_summary", "No summary")
                         st.markdown(f'<div class="clinical-summary">{summary}</div>', unsafe_allow_html=True)
                         
-                        # Current medications
                         st.markdown("## 4. Current Medications")
                         medications = patient_data.get("medications", [])
                         if medications and len(medications) > 0:
@@ -453,7 +568,6 @@ Document:
                         else:
                             st.markdown('<div class="medications-section"><div class="med-item">No medications recorded</div></div>', unsafe_allow_html=True)
                         
-                        # Risk flags and next steps
                         col_risks, col_steps = st.columns([1, 1])
                         
                         with col_risks:
@@ -476,7 +590,6 @@ Document:
                             else:
                                 st.markdown('<p style="color: #9bc5e6;">No specific recommendations</p>', unsafe_allow_html=True)
                         
-                        # Vital signs
                         st.markdown("## 7. Vital Signs")
                         vitals = patient_data.get("vital_signs", {})
                         bp = vitals.get("blood_pressure", "N/A") if vitals else "N/A"
@@ -500,7 +613,6 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Confidence
                         st.markdown("## 8. Confidence")
                         confidence = patient_data.get("confidence_score", 0)
                         confidence_pct = int(confidence * 100)
@@ -515,7 +627,6 @@ Document:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Raw JSON
                         with st.expander("View JSON"):
                             st.json(patient_data)
                 
