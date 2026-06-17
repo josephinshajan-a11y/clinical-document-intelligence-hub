@@ -632,60 +632,58 @@ Document:
                     risk_score = calculate_risk_score(patient_data)
                     risk_level, risk_color = get_risk_level(risk_score)
                     
+                    st.markdown("## ⚕️ Risk Stratification")
+                    if risk_level == "HIGH":
+                        st.markdown(f"""
+                        <div class="risk-card-high">
+                            <div class="risk-score-number">{risk_score}/10</div>
+                            <div class="risk-score-label">🚨 HIGH RISK PATIENT</div>
+                            <div class="risk-description">
+                                <strong>Requires immediate clinical review and intervention.</strong><br><br>
+                                This patient presents with multiple risk factors that warrant urgent attention. 
+                                Schedule specialist consultation and consider escalation protocols.
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    elif risk_level == "MEDIUM":
+                        st.markdown(f"""
+                        <div class="risk-card-medium">
+                            <div class="risk-score-number">{risk_score}/10</div>
+                            <div class="risk-score-label">⚠️ MEDIUM RISK PATIENT</div>
+                            <div class="risk-description">
+                                <strong>Schedule specialist consultation within 1-2 weeks.</strong><br><br>
+                                This patient has several risk factors that need careful monitoring. 
+                                Implement structured follow-up plan and regular check-ins.
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div class="risk-card-low">
+                            <div class="risk-score-number">{risk_score}/10</div>
+                            <div class="risk-score-label">✓ LOW RISK PATIENT</div>
+                            <div class="risk-description">
+                                <strong>Routine follow-up and preventive care recommended.</strong><br><br>
+                                This patient is stable with minimal acute risk factors. 
+                                Continue regular monitoring and maintain current treatment plan.
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("")
+                    
+                    pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
+                    patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
+                    st.download_button(
+                        label="📥 Download Report (PDF)",
+                        data=pdf_buffer,
+                        file_name=f"Clinical_Report_{patient_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                    
                     with col_results:
                         st.markdown('<div class="success-msg">✓ Analysis complete</div>', unsafe_allow_html=True)
-                        
-                        pdf_buffer = generate_pdf_report(patient_data, risk_score, risk_level)
-                        patient_name = patient_data.get('patient_name', 'Report').replace(" ", "_")
-                        st.download_button(
-                            label="📥 Download Report (PDF)",
-                            data=pdf_buffer,
-                            file_name=f"Clinical_Report_{patient_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                        
-                        st.markdown("")
-                        
-                        st.markdown("## ⚕️ Risk Stratification")
-                        if risk_level == "HIGH":
-                            st.markdown(f"""
-                            <div class="risk-card-high">
-                                <div class="risk-score-number">{risk_score}/10</div>
-                                <div class="risk-score-label">🚨 HIGH RISK PATIENT</div>
-                                <div class="risk-description">
-                                    <strong>Requires immediate clinical review and intervention.</strong><br><br>
-                                    This patient presents with multiple risk factors that warrant urgent attention. 
-                                    Schedule specialist consultation and consider escalation protocols.
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        elif risk_level == "MEDIUM":
-                            st.markdown(f"""
-                            <div class="risk-card-medium">
-                                <div class="risk-score-number">{risk_score}/10</div>
-                                <div class="risk-score-label">⚠️ MEDIUM RISK PATIENT</div>
-                                <div class="risk-description">
-                                    <strong>Schedule specialist consultation within 1-2 weeks.</strong><br><br>
-                                    This patient has several risk factors that need careful monitoring. 
-                                    Implement structured follow-up plan and regular check-ins.
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"""
-                            <div class="risk-card-low">
-                                <div class="risk-score-number">{risk_score}/10</div>
-                                <div class="risk-score-label">✓ LOW RISK PATIENT</div>
-                                <div class="risk-description">
-                                    <strong>Routine follow-up and preventive care recommended.</strong><br><br>
-                                    This patient is stable with minimal acute risk factors. 
-                                    Continue regular monitoring and maintain current treatment plan.
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        st.markdown("")
                         
                         st.markdown("## 2. Patient Summary")
                         name = patient_data.get("patient_name", "N/A")
