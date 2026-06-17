@@ -521,6 +521,12 @@ def generate_pdf_report(patient_data, risk_score, risk_level):
     elements.append(Paragraph(f"Risk Score: {risk_score}/10 ({risk_level})", styles['Normal']))
     elements.append(Spacer(1, 0.2*inch))
     
+    elements.append(Paragraph("Follow-up Timeline", heading_style))
+    timeline = get_followup_timeline(risk_level, patient_data)
+    for time, action in timeline:
+        elements.append(Paragraph(f"<b>{time}:</b> {action}", styles['Normal']))
+    elements.append(Spacer(1, 0.2*inch))
+    
     elements.append(Paragraph("Patient Information", heading_style))
     patient_info = [
         ['Name', patient_data.get('patient_name', 'N/A')],
