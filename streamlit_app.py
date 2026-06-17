@@ -4,14 +4,10 @@ from groq import Groq
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Get API key
+api_key = st.secrets["GROQ_API_KEY"]
 
-# Get API key from Streamlit secrets (for hosted) or .env (for local)
-if "GROQ_API_KEY" in st.secrets:
-    api_key = st.secrets["GROQ_API_KEY"]
-else:
-    api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=api_key)
 
 # Initialize Groq - using OpenAI-compatible API
 client = Groq(api_key=api_key)
