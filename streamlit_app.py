@@ -2,10 +2,6 @@ import streamlit as st
 import json
 from groq import Groq
 import PyPDF2
-import base64
-from PIL import Image
-import io
-import pytesseract
 
 # Get API key
 api_key = st.secrets["GROQ_API_KEY"]
@@ -313,16 +309,6 @@ def extract_text_from_pdf(pdf_file):
         st.error(f"Error reading PDF: {str(e)}")
         return ""
 
-# Function to extract text from image using OCR
-def extract_text_from_image(image_file):
-    try:
-        img = Image.open(image_file)
-        text = pytesseract.image_to_string(img)
-        return text
-    except Exception as e:
-        st.error(f"Error extracting text from image: {str(e)}")
-        return ""
-
 # Sidebar
 with st.sidebar:
     st.markdown("### Clinical Intelligence Assistant")
@@ -335,7 +321,6 @@ with st.sidebar:
     **Supported formats:**
     - Text (paste directly)
     - PDF files
-    - Images (JPG, PNG)
     
     **What it does:**
     - Extracts patient information
@@ -363,7 +348,7 @@ with col_input:
     # Input method selection - HORIZONTAL
     input_type = st.radio(
         "Choose input method:",
-        ["Paste Text", "Upload PDF", "Upload Image"],
+        ["Paste Text", "Upload PDF"],
         label_visibility="collapsed",
         horizontal=True
     )
@@ -387,25 +372,12 @@ with col_input:
                 if document_text:
                     st.success("PDF text extracted successfully")
     
-    elif input_type == "Upload Image":
-        image_file = st.file_uploader("Upload image file", type=['jpg', 'jpeg', 'png'], label_visibility="collapsed")
-        if image_file:
-            with st.spinner("Processing image..."):
-                img = Image.open(image_file)
-                st.image(img, use_column_width=True)
-                with st.spinner("Extracting text from image using OCR..."):
-                    document_text = extract_text_from_image(image_file)
-                    if document_text.strip():
-                        st.success("Image text extracted successfully")
-                    else:
-                        st.warning("No text found in image. Please ensure the image is clear and contains readable text.")
-    
     st.markdown("")
     
     # Analyze button
     if st.button("Analyze Document", use_container_width=True):
         if not document_text.strip():
-            st.error("Please provide a document or image to analyze")
+            st.error("Please provide a document to analyze")
         else:
             with st.spinner("Processing..."):
                 try:
