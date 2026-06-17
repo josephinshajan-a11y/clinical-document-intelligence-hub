@@ -227,17 +227,22 @@ st.markdown("""
         font-weight: 600;
     }
     
-    .stButton > button {
-        background: linear-gradient(135deg, #2d5a8c 0%, #1e3f5a 100%) !important;
-        color: white !important;
-        border: none;
-        border-radius: 0.5rem;
-        padding: 0.875rem 2rem;
-        font-weight: 700 !important;
-        width: 100%;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-    }
+    ..stButton > button {
+    background: #2563eb !important;
+    color: white !important;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.875rem 2rem;
+    font-weight: 700 !important;
+    width: 100%;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stButton > button:hover {
+    background: #1d4ed8 !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
     
     .stButton > button:hover {
         background: linear-gradient(135deg, #5ba3d0 0%, #2d5a8c 100%) !important;
