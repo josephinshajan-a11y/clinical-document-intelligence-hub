@@ -55,37 +55,37 @@ streamlit run streamlit_app.py
 ## Example: Marcus Thompson (Test Case)
 
 **What you paste in**:
+```
 PATIENT: Marcus Thompson, 52-year-old male
-
 COMPLAINT: Acute chest pain for 2 hours, radiating to left arm
+
 HISTORY: Type 2 Diabetes, Hypertension, Obesity (BMI 32), former smoker
-
 VITALS: BP 162/96, HR 96, Temp 37.2°C
-
 MEDICATIONS: Metformin 1000mg, Lisinopril 20mg, Atorvastatin 80mg, Aspirin 325mg
-ASSESSMENT: Rule out acute coronary syndrome
 
+ASSESSMENT: Rule out acute coronary syndrome
 PLAN: EKG, troponin, cardiology consultation, ICU monitoring
+```
 
 **What you get back**:
+```
 Risk Score: 7.5/10 - HIGH RISK
-
 Confidence: 94%
+
 Medications: Metformin, Lisinopril, Atorvastatin, Aspirin
-
 Problems: Acute chest pain, diabetes, high BP (not controlled), obesity, used to smoke
+
 Follow-up:
-
-Day 1: Cardiology + labs
-Day 3: Team check-in
-Day 7: Specialist visit
-Day 14: Check if meds are working
-Day 30: Full checkup
-
+- Day 1: Cardiology + labs
+- Day 3: Team check-in
+- Day 7: Specialist visit
+- Day 14: Check if meds are working
+- Day 30: Full checkup
+```
 
 ## How I Score Risk
 
-I look at the clinical notes and count up keywords. If I see serious stuff like "stroke", "sepsis", or "acute", that's +3 points. If I see problems like "diabetes" or "high blood pressure", that's +1.5 points each. Other health problems are +1 point. If they're over 70, add 1 more.
+I look at the clinical notes and count up keywords. If I see serious stuff like "stroke", "sepsis", or "acute" - that's +3 points. If I see problems like "diabetes" or "high blood pressure" - that's +1.5 points each. Other health problems are +1 point. If they're over 70, add 1 more.
 
 Then I sort them:
 - **7 or higher** = HIGH RISK (needs urgent help)
@@ -150,5 +150,8 @@ This works great as a demo. But if you wanted to actually use this in a hospital
 The tool gives you a suggestion - doctors still decide what actually happens.
 
 ---
-  
+
+**Built by**: Josephin Shajan  
+**Email**: josephinshajan@gmail.com  
+**Phone**: +44 7553 779990  
 **GitHub**: https://github.com/josephinshajan-a11y/clinical-document-intelligence-hub
