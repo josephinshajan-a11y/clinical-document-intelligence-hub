@@ -1,89 +1,154 @@
 # Clinical Document Intelligence Hub
 
-**What**: A tool that reads clinical documents and pulls out patient information, scores how serious the case is, and suggests when they should follow up.
+A tool that reads clinical documents, figures out how serious the patient's condition is, and tells you when they should follow up. Built to save doctors and nurses hours of paperwork and help catch risky cases.
 
-**Why**: Doctors and nurses waste hours reading the same patient documents over and over. This saves that time and catches risky cases that might get missed.
+**Live Demo**: https://josephin-clinical-ai-demo-2026.streamlit.app/
 
-## The Approach
+## The Problem
 
-We read a clinical note and extract the important parts: patient name, medications, vital signs, what the doctors flagged as concerns. Then we score how serious the case is based on keywords (chest pain + diabetes + smoking = risky). Finally we suggest follow-up timing based on that score. The whole thing takes 5-10 seconds.
+Doctors and nurses spend way too much time reading the same patient files over and over. Important stuff gets missed. Sick patients don't get seen fast enough.
 
-## What I Used
+## What I Built
 
-- **AI**: Llama 3.3 70B language model via Groq API (free tier available)
-- **Website**: Streamlit (simple, deploys free to Streamlit Cloud)
-- **PDF Reading**: PyPDF2 for text, OCR for scanned images
-- **Reports**: ReportLab to generate downloadable PDFs
-- **Code**: Python 3.10+
+I made a system that:
+- Reads clinical notes (PDF, text, or images)
+- Pulls out patient info, what meds they're on, vital signs, what problems the doctors found
+- Looks at the information and decides how risky the case is
+- Suggests when they should come back for a follow-up visit
+- Creates a PDF report you can download and keep
 
-## Setup & Usage
+Instead of spending 20 minutes reading and taking notes, the whole thing is done in 5-10 seconds.
 
-**Live (no setup needed)**: https://josephin-clinical-ai-demo-2026.streamlit.app/
+## How It Works
 
-**Local setup**:
+**You give it**: A clinical note (paste it or upload a PDF)
+
+**It does**: 
+- Reads the document
+- Sends it to an AI to pull out the important stuff
+- Scores how risky it is based on what it sees
+- Works out a follow-up schedule
+
+**You get back**: A risk score (0-10), patient info, meds list, what's wrong, when to see them next
+
+## Installation
+
+```bash
 git clone https://github.com/josephinshajan-a11y/clinical-document-intelligence-hub.git
-
 cd clinical-document-intelligence-hub
-
 python -m venv venv && source venv/bin/activate
-
 pip install -r requirements.txt
-
-echo "GROQ_API_KEY=your_key_from_console.groq.com" > .env
-
+echo "GROQ_API_KEY=your_actual_key_here" > .env
 streamlit run streamlit_app.py
+```
 
-**How to use**: Paste a clinical note or upload a PDF → Click "Analyze Document" → See the risk score, medications, problems, and follow-up plan → Download the PDF.
+**Get your free API key**: https://console.groq.com (takes 2 minutes)
 
-## Example: Marcus Thompson (52M, Chest Pain)
+## Usage
 
-**Input Document**:
+1. Go to the live app or run it on your computer
+2. Paste in a clinical note or upload a PDF
+3. Click "Analyze Document"
+4. See the risk score, medications, problems, and follow-up dates
+5. Download the PDF if you want to save it
+
+## Example: Marcus Thompson (Test Case)
+
+**What you paste in**:
 PATIENT: Marcus Thompson, 52-year-old male
 
 COMPLAINT: Acute chest pain for 2 hours, radiating to left arm
-HISTORY: Type 2 Diabetes, Hypertension, Obesity (BMI 32), former smoker (quit 2015)
+HISTORY: Type 2 Diabetes, Hypertension, Obesity (BMI 32), former smoker
 
 VITALS: BP 162/96, HR 96, Temp 37.2°C
 
-MEDICATIONS: Metformin 1000mg twice daily, Lisinopril 20mg daily,
-
-Atorvastatin 80mg daily, Aspirin 325mg daily
-
+MEDICATIONS: Metformin 1000mg, Lisinopril 20mg, Atorvastatin 80mg, Aspirin 325mg
 ASSESSMENT: Rule out acute coronary syndrome
 
 PLAN: EKG, troponin, cardiology consultation, ICU monitoring
 
-**What We Extract**:
+**What you get back**:
+Risk Score: 7.5/10 - HIGH RISK
 
-- Patient: Marcus Thompson, 52M
-- Risk Score: **7.5/10 - HIGH RISK** (urgent specialist needed)
-- Medications: Metformin, Lisinopril, Atorvastatin, Aspirin
-- Risk Flags: Acute chest pain, diabetes, high BP (uncontrolled), obesity, smoking history
-- Follow-up: Day 1 - cardiology consult + labs, Day 3 - care team check-in, Day 7 - specialist appointment, Day 14 - med review, Day 30 - reassessment
-- Confidence: 94%
+Confidence: 94%
+Medications: Metformin, Lisinopril, Atorvastatin, Aspirin
 
-## Risk Scoring
+Problems: Acute chest pain, diabetes, high BP (not controlled), obesity, used to smoke
+Follow-up:
 
-We look at keywords in the document: "stroke", "sepsis", "acute" = +3 points each. "Diabetes", "hypertension" = +1.5 points each. Other concerns = +1 point. Age over 70 = +1 extra point. Then we classify: ≥7 is HIGH RISK (urgent), 4-7 is MEDIUM (soon), <4 is LOW (routine).
+Day 1: Cardiology + labs
+Day 3: Team check-in
+Day 7: Specialist visit
+Day 14: Check if meds are working
+Day 30: Full checkup
 
-## Our Assumptions
 
-- Input documents have real clinical information (not random text)
-- Users will review the AI's output before using it (it's a starting point, not final truth)
-- Keyword scoring is good enough for a proof of concept (better systems exist but take more time to build)
-- Users understand this is a demo, not approved for actual patient care
-- Clinicians will always make the final decision, not the AI
+## How I Score Risk
 
-## Contributing
+I look at the clinical notes and count up keywords. If I see serious stuff like "stroke", "sepsis", or "acute", that's +3 points. If I see problems like "diabetes" or "high blood pressure", that's +1.5 points each. Other health problems are +1 point. If they're over 70, add 1 more.
 
-Found a bug? Open an issue on GitHub. Think the risk scoring is wrong? Let us know - those thresholds can be adjusted. Want to add code? Fork the repo and send a pull request.
+Then I sort them:
+- **7 or higher** = HIGH RISK (needs urgent help)
+- **4 to 7** = MEDIUM RISK (should see a doctor soon)
+- **Below 4** = LOW RISK (normal follow-up is fine)
 
-## Important Note
+### Why I Picked This Way
 
-This is a demonstration only. Before using in a hospital you'd need: doctor validation, regulatory approval, ethics board sign-off, proper insurance, and HIPAA compliance. The AI's output is a recommendation to review, not a clinical decision.
+I could have used fancy machine learning, but keyword counting works better because:
+- It's fast (done in seconds)
+- Doctors can understand exactly why it gave that score
+- Doesn't need a big database of patient info
+- Good enough to show the idea works
+- When something seems wrong, you can see why
+
+### The Follow-up Schedule
+
+The schedule changes depending on how sick they are:
+- **HIGH RISK**: See a specialist today, get labs done today, check in after 3 days, appointment in a week
+- **MEDIUM RISK**: Schedule a doctor visit in the next few days, come back in 2 weeks, another checkup a month later
+- **LOW RISK**: Schedule something for next week, check in after a couple weeks, see doctor in a month
+
+## What I Used
+
+- **AI**: Llama 3.3 70B language model from Groq
+- **Website**: Streamlit (it's simple and free to host)
+- **Reading PDFs**: PyPDF2 for normal ones, OCR for scanned images
+- **Making reports**: ReportLab to create PDFs
+- **Hosting**: Streamlit Cloud (free)
+- **Code**: Python 3.10+
+
+## What I'm Assuming
+
+- You're putting real medical info in (not random text)
+- You'll double-check what the AI pulls out before you use it (it's a starting point, not the final word)
+- This simple scoring is good enough for a demo (there are more complicated ways, but they take way longer)
+- You know this is a test, not approved for real patient care yet
+- A doctor always makes the final decision, not the computer
+
+## The Ethics Part
+
+The Marcus Thompson example above is just made up for testing. In the real demo, I use my dad's actual discharge summary - and he said it was okay. That's the right way to handle real patient info.
+
+If this was going into a real hospital, you'd need:
+- Patients to agree their info could be used
+- An ethics board to look it over and approve it
+- To follow HIPAA rules to keep patient info private
+- To not save people's names or anything that could identify them
+- Real doctors to test it and make sure it works
+
+Right now it's just a proof of concept - showing what's possible, not ready for patients yet.
+
+## Real Talk
+
+This works great as a demo. But if you wanted to actually use this in a hospital, you'd need:
+- Doctors to test it and say it's accurate
+- Lawyers and the hospital's permission
+- The hospital's ethics committee to say yes
+- Insurance
+- All the privacy rules followed properly
+
+The tool gives you a suggestion - doctors still decide what actually happens.
 
 ---
-
-**GitHub**: https://github.com/josephinshajan-a11y/clinical-document-intelligence-hub  
-**Live App**: https://josephin-clinical-ai-demo-2026.streamlit.app/
-
+  
+**GitHub**: https://github.com/josephinshajan-a11y/clinical-document-intelligence-hub
